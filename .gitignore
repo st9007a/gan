@@ -1,4 +1,4 @@
 MNIST_data/
 fake_data/
-fake_image*
+fake_image/
 models/
