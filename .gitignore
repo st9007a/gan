@@ -2,3 +2,4 @@ MNIST_data/
 fake_data/
 fake_image/
 models/
+__pycache__/
