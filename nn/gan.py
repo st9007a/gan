@@ -16,7 +16,7 @@ class GAN():
 
         self.G = Sequential()
         self.G.add(Dense(256, input_dim = 128, activation = 'relu'))
-        self.G.add(Dense(784, activation = 'sigmoid'))
+        self.G.add(Dense(784, activation = 'tanh'))
 
         return self.G
 
@@ -49,7 +49,7 @@ class GAN():
         self.model_build = True
 
     def save(self, path):
-        self.generator().save_model(path)
+        self.generator().save(path)
 
 class ConditionalGAN():
 
@@ -62,10 +62,14 @@ class ConditionalGAN():
         self._d_kernel = []
 
     def generator_output(self, noise_input, cond_input):
-        in_layer_1 = Dense(200, activation = 'relu')(noise_input)
-        in_layer_2 = Dense(1000, activation = 'relu')(cond_input)
+        in_layer_1 = Dense(200)(noise_input)
+        in_layer_1 = LeakyReLU()(in_layer_1)
+        in_layer_2 = Dense(1000)(cond_input)
+        in_layer_2 = LeakyReLU()(in_layer_2)
 
         output = concatenate([in_layer_1, in_layer_2])
+        output = Dense(512)(output)
+        output = LeakyReLU()(output)
 
         return Dense(784, activation = 'sigmoid')(output)
 
@@ -73,9 +77,11 @@ class ConditionalGAN():
         if len(self._d_kernel) > 0:
             return self._d_kernel
 
-        self._d_kernel.append(LeakyReLU(240))
-        self._d_kernel.append(LeakyReLU(50))
-        self._d_kernel.append(LeakyReLU(240))
+        self._d_kernel.append(Dense(240))
+        self._d_kernel.append(LeakyReLU())
+        self._d_kernel.append(Dense(50))
+        self._d_kernel.append(LeakyReLU())
+        self._d_kernel.append(LeakyReLU())
         self._d_kernel.append(Dense(1, activation = 'sigmoid'))
 
         return self._d_kernel
@@ -83,8 +89,12 @@ class ConditionalGAN():
     def discriminator_output(self, data_input, cond_input):
         kern = self.d_kern()
 
-        output = concatenate([kern[0](data_input), kern[1](cond_input)])
-        for i in range(2, len(kern)):
+        in_layer_1 = kern[0](data_input)
+        in_layer_1 = kern[1](in_layer_1)
+        in_layer_2 = kern[2](cond_input)
+        in_layer_2 = kern[3](in_layer_2)
+        output = concatenate([in_layer_1, in_layer_2])
+        for i in range(4, len(kern)):
             output = kern[i](output)
 
         return output
@@ -120,7 +130,10 @@ class ConditionalGAN():
         self.D = Model(inputs = [data_input, cond_input], outputs = d_out)
         self.full_model = Model(inputs = [noise_input, cond_input], outputs = gan_out)
 
-        self.D.compile(loss = 'binary_crossentropy', optimizer = Adam(0.00015))
+        self.D.compile(loss = 'binary_crossentropy', optimizer = Adam(0.0001))
         self.full_model.compile(loss = 'binary_crossentropy', optimizer = Adam(0.0001))
 
         self.model_build = True
+
+    def save(self, path):
+        self.generator().save(path)
