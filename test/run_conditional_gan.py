@@ -1,7 +1,7 @@
 import pickle
 import numpy as np
 
-from nn.gan import GAN, ConditionalGAN
+from nn.gan import ConditionalGAN
 from data.dataset import mnist
 from data.util import get_noise_sample, get_random_condition
 

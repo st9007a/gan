@@ -1,6 +1,6 @@
 from keras.models import Sequential, Model
-from keras.layers import Input, Dense, concatenate, LeakyReLU
-from keras.optimizers import Adam, SGD
+from keras.layers import Input, Dense, concatenate, LeakyReLU, PReLU
+from keras.optimizers import Adam
 
 class GAN():
 
@@ -13,20 +13,14 @@ class GAN():
     def generator(self):
         if self.G is not None:
             return self.G
-
-        self.G = Sequential()
-        self.G.add(Dense(256, input_dim = 128, activation = 'relu'))
-        self.G.add(Dense(784, activation = 'tanh'))
+        self.build()
 
         return self.G
 
     def discriminator(self):
         if self.D is not None:
             return self.D
-
-        self.D = Sequential()
-        self.D.add(Dense(256, input_dim = 784, activation = 'relu'))
-        self.D.add(Dense(1, activation = 'sigmoid'))
+        self.build()
 
         return self.D
 
@@ -38,6 +32,14 @@ class GAN():
     def build(self):
         if self.model_build == True:
             return
+
+        self.G = Sequential()
+        self.G.add(Dense(256, input_dim = 128, activation = 'relu'))
+        self.G.add(Dense(784, activation = 'tanh'))
+
+        self.D = Sequential()
+        self.D.add(Dense(256, input_dim = 784, activation = 'relu'))
+        self.D.add(Dense(1, activation = 'sigmoid'))
 
         self.full_model = Sequential()
         self.full_model.add(self.generator())
@@ -51,7 +53,7 @@ class GAN():
     def save(self, path):
         self.generator().save(path)
 
-class ConditionalGAN():
+class ConditionalGAN(GAN):
 
     def __init__(self):
         self.G = None
@@ -63,9 +65,9 @@ class ConditionalGAN():
 
     def generator_output(self, noise_input, cond_input):
         in_layer_1 = Dense(200)(noise_input)
-        in_layer_1 = LeakyReLU()(in_layer_1)
+        in_layer_1 = PReLU()(in_layer_1)
         in_layer_2 = Dense(1000)(cond_input)
-        in_layer_2 = LeakyReLU()(in_layer_2)
+        in_layer_2 = PReLU()(in_layer_2)
 
         output = concatenate([in_layer_1, in_layer_2])
         output = Dense(512)(output)
@@ -78,10 +80,10 @@ class ConditionalGAN():
             return self._d_kernel
 
         self._d_kernel.append(Dense(240))
-        self._d_kernel.append(LeakyReLU())
+        self._d_kernel.append(PReLU())
         self._d_kernel.append(Dense(50))
-        self._d_kernel.append(LeakyReLU())
-        self._d_kernel.append(LeakyReLU())
+        self._d_kernel.append(PReLU())
+        self._d_kernel.append(PReLU())
         self._d_kernel.append(Dense(1, activation = 'sigmoid'))
 
         return self._d_kernel
@@ -98,21 +100,6 @@ class ConditionalGAN():
             output = kern[i](output)
 
         return output
-
-    def generator(self):
-        if self.G is None:
-            self.build()
-        return self.G
-
-    def discriminator(self):
-        if self.D is None:
-            self.build()
-        return self.D
-
-    def gan(self):
-        if self.full_model is None:
-            self.build
-        return self.full_model
 
     def build(self):
         if self.model_build == True:
@@ -134,6 +121,3 @@ class ConditionalGAN():
         self.full_model.compile(loss = 'binary_crossentropy', optimizer = Adam(0.0001))
 
         self.model_build = True
-
-    def save(self, path):
-        self.generator().save(path)
