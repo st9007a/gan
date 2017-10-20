@@ -10,7 +10,7 @@ sample_size = 100
 
 dataset = mnist()
 
-model = ConditionalGAN()
+model = ConditionalGAN((sample_size, ))
 model.build()
 
 for step in range(1, 100001):

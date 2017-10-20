@@ -1,27 +1,27 @@
 from keras.models import Sequential, Model
-from keras.layers import Input, Dense, concatenate, LeakyReLU, PReLU
+from keras.layers import Input, Dense, concatenate, LeakyReLU, PReLU, Conv2D, UpSampling2D, MaxPooling2D, Reshape, Activation, Flatten
 from keras.optimizers import Adam
 
 class GAN():
 
-    def __init__(self):
+    def __init__(self, noise_shape):
         self.full_model = None
         self.D = None
         self.G = None
         self.model_build = False
 
+        self.noise_shape = noise_shape
+
     def generator(self):
-        if self.G is not None:
-            return self.G
-        self.build()
+        if self.G is None:
+            self.build()
+        return self.G
 
         return self.G
 
     def discriminator(self):
-        if self.D is not None:
-            return self.D
-        self.build()
-
+        if self.D is None:
+            self.build()
         return self.D
 
     def gan(self):
@@ -34,16 +34,16 @@ class GAN():
             return
 
         self.G = Sequential()
-        self.G.add(Dense(256, input_dim = 128, activation = 'relu'))
+        self.G.add(Dense(256, input_shape = self.noise_shape, activation = 'relu'))
         self.G.add(Dense(784, activation = 'tanh'))
 
         self.D = Sequential()
-        self.D.add(Dense(256, input_dim = 784, activation = 'relu'))
+        self.D.add(Dense(256, input_shape = (784, ), activation = 'relu'))
         self.D.add(Dense(1, activation = 'sigmoid'))
 
         self.full_model = Sequential()
-        self.full_model.add(self.generator())
-        self.full_model.add(self.discriminator())
+        self.full_model.add(self.G)
+        self.full_model.add(self.D)
 
         self.D.compile(loss = 'binary_crossentropy', optimizer = Adam(0.0001))
         self.full_model.compile(loss = 'binary_crossentropy', optimizer = Adam(0.0001))
@@ -55,11 +55,8 @@ class GAN():
 
 class ConditionalGAN(GAN):
 
-    def __init__(self):
-        self.G = None
-        self.D = None
-        self.full_model = None
-        self.model_build = False
+    def __init__(self, noise_shape):
+        super(ConditionalGAN, self).__init__(noise_shape)
 
         self._d_kernel = []
 
@@ -105,7 +102,7 @@ class ConditionalGAN(GAN):
         if self.model_build == True:
             return
 
-        noise_input = Input(shape = (100, ))
+        noise_input = Input(shape = self.noise_shape)
         data_input = Input(shape = (784, ))
         cond_input = Input(shape = (10, ))
 
@@ -121,3 +118,42 @@ class ConditionalGAN(GAN):
         self.full_model.compile(loss = 'binary_crossentropy', optimizer = Adam(0.0001))
 
         self.model_build = True
+
+class DCGAN(GAN):
+
+    def __init__(self, noise_shape):
+        super(DCGAN, self).__init__(noise_shape)
+
+    def build(self):
+        if self.model_build == True:
+            return
+
+        self.G = Sequential()
+        self.G.add(Dense(1024, input_shape = self.noise_shape, activation = 'relu'))
+        self.G.add(Dense(7 * 7 * 64, activation = 'relu'))
+        self.G.add(Reshape(target_shape = (7, 7, 64)))
+        self.G.add(UpSampling2D(size = (2, 2)))
+        self.G.add(Conv2D(32, (5, 5), padding = 'same'))
+        self.G.add(UpSampling2D(size = (2, 2)))
+        self.G.add(Activation('relu'))
+        self.G.add(Conv2D(1, (5, 5), padding = 'same'))
+        self.G.add(Activation('relu'))
+
+        self.D = Sequential()
+        self.D.add(Conv2D(32, (5, 5), padding = 'same', input_shape = (28, 28, 1)))
+        self.D.add(Activation('relu'))
+        self.D.add(MaxPooling2D(pool_size = (2, 2)))
+        self.D.add(Conv2D(64, (5, 5)))
+        self.D.add(Activation('relu'))
+        self.D.add(MaxPooling2D(pool_size = (2, 2)))
+        self.D.add(Flatten())
+        self.D.add(Dense(1024, activation = 'relu'))
+        self.D.add(Dense(1, activation = 'sigmoid'))
+
+        self.full_model = Sequential()
+        self.full_model.add(self.G)
+        self.full_model.add(self.D)
+
+        self.D.compile(loss = 'binary_crossentropy', optimizer = Adam(0.0001))
+        self.full_model.compile(loss = 'binary_crossentropy', optimizer = Adam(0.0001))
+
