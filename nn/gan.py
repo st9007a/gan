@@ -1,6 +1,6 @@
 from keras.models import Sequential, Model
-from keras.layers import Input, Dense, concatenate, LeakyReLU, PReLU
-from keras.layers import Conv2D, Conv2DTranspose, MaxPooling2D, AveragePooling2D, Reshape, Activation, Flatten
+from keras.layers import Input, Dense, concatenate, LeakyReLU, BatchNormalization, Dropout
+from keras.layers import Conv2D, Reshape, Activation, Flatten, UpSampling2D
 from keras.optimizers import Adam
 
 class GAN():
@@ -127,38 +127,31 @@ class DCGAN(GAN):
             return
 
         self.G = Sequential()
-        self.G.add(Dense(1024, input_shape = self.noise_shape))
-        self.G.add(Activation('selu'))
-        self.G.add(Dense(7 * 7 * 128))
-        self.G.add(Activation('selu'))
+        self.G.add(Dense(7 * 7 * 128, input_shape = self.noise_shape))
+        self.G.add(LeakyReLU(0.2))
+        self.G.add(BatchNormalization())
         self.G.add(Reshape(target_shape = (7, 7, 128)))
-        self.G.add(Conv2DTranspose(64, (8, 8)))
-        self.G.add(Activation('selu'))
-        self.G.add(Conv2DTranspose(1, (15, 15)))
-        self.G.add(Activation('tanh'))
+        self.G.add(UpSampling2D())
+        self.G.add(Conv2D(64, (5, 5), padding = 'same'))
+        self.G.add(LeakyReLU(0.2))
+        self.G.add(BatchNormalization())
+        self.G.add(UpSampling2D())
+        self.G.add(Conv2D(1, (5, 5), padding = 'same', activation = 'tanh'))
 
         self.D = Sequential()
-        self.D.add(Conv2D(32, (5, 5), padding = 'same', input_shape = (28, 28, 1)))
-        # self.D.add(LeakyReLU())
-        self.G.add(Activation('selu'))
-        self.D.add(Conv2D(64, (5, 5), padding = 'same'))
-        # self.D.add(LeakyReLU())
-        self.G.add(Activation('selu'))
-        self.D.add(MaxPooling2D(pool_size = (2, 2)))
+        self.D.add(Conv2D(64, (5, 5), input_shape = (28, 28, 1), padding = 'same'))
+        self.D.add(LeakyReLU(0.2))
+        self.D.add(Dropout(0.3))
         self.D.add(Conv2D(128, (5, 5), padding = 'same'))
-        # self.D.add(LeakyReLU())
-        self.G.add(Activation('selu'))
-        self.D.add(AveragePooling2D(pool_size = (2, 2)))
+        self.D.add(LeakyReLU(0.2))
+        self.D.add(Dropout(0.3))
         self.D.add(Flatten())
-        self.D.add(Dense(1024))
-        # self.D.add(LeakyReLU())
-        self.G.add(Activation('selu'))
         self.D.add(Dense(1, activation = 'sigmoid'))
 
         self.full_model = Sequential()
         self.full_model.add(self.G)
         self.full_model.add(self.D)
 
-        self.D.compile(loss = 'binary_crossentropy', optimizer = Adam(0.0002))
-        self.full_model.compile(loss = 'binary_crossentropy', optimizer = Adam(0.0001))
+        self.D.compile(loss = 'binary_crossentropy', optimizer = Adam())
+        self.full_model.compile(loss = 'binary_crossentropy', optimizer = Adam())
 
