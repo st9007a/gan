@@ -10,6 +10,8 @@ raw_data = None
 with open(raw_file, 'rb') as p:
     raw_data = pickle.load(p)
 
+raw_data = np.clip(raw_data, 0, 1)
+
 idx = 0
 for data in raw_data:
     imsave('fake_image/' + str(idx) + '.png', np.reshape(data, (28, 28)))

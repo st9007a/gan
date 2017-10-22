@@ -10,7 +10,7 @@ class mnist():
         data = self.dataset.train.next_batch(batch_size)
         return data[0], data[1]
 
-    def get_batch2d(self, batch_size):
+    def get_batch2D(self, batch_size):
         data = self.dataset.train.next_batch(batch_size)
-        np.reshape(data[0], (28, 28, 1))
-        return data[0], data[1]
+        train = np.reshape(data[0], (batch_size, 28, 28, 1))
+        return train, data[1]
